@@ -7,13 +7,15 @@ class Linear():
     def __init__(self, dim_in, dim_out):
 
         # constant used for initializing weights
-        eps = 1e-6
+        # torch.manual_seed(54)
+        eps = 1e-2
 
         # weights for the layer
-        self.w = torch.empty(dim_out, dim_in).normal_(0, eps)
-
+        # self.w = torch.empty(dim_out, dim_in).normal_(0, eps)   # Simple weight initialization from normal distribution
+        self.w = torch.randn(dim_out, dim_in) * math.sqrt(2/dim_in)     # He initialization technique
         # bias for the layer
-        self.b = torch.empty(dim_out).normal_(0, eps)
+        # self.b = torch.empty(dim_out).normal_(0, eps)
+        self.b = torch.randn(dim_out) * math.sqrt(2/dim_in)  # He initialization technique
 
         # Corresponding gradients
 
@@ -74,6 +76,7 @@ class relu():
     def forward(self, x_in):
 
         self.temp = x_in
+        # print("RELU forward, x_in ", self.temp)
         return torch.where(x_in> 0, x_in, torch.zeros_like(x_in))
 
     def gradient(self, x_in):
@@ -91,6 +94,7 @@ class relu():
             x_in = self.temp
 
         dldx_in = torch.mul(gradwrtoutput, self.gradient(x_in))     #Compute gradient wrt input of module
+        # print("RELU backward: ", x_in, gradwrtoutput, dldx_in)
         return dldx_in
 
     def param(self):
@@ -102,6 +106,7 @@ class relu():
 
 
     __call__ = forward
+
 
 
 
@@ -126,6 +131,8 @@ class loss_MSE():
     __call__ = forward
 
 
+
+
 class Sequential():
 
     def __init__(self, *modules):
@@ -140,10 +147,11 @@ class Sequential():
         :param x_in: input data
         :return: output processed data
         """
-        x_out = torch.zeros_like(x_in)
+        # x_out = torch.zeros_like(x_in)
 
         for layer in self.layers:           #Call forward function of each layer
             x_out = layer.forward(x_in)
+            # print("Forward pass Seq: ", layer, x_in, x_out)
             x_in = x_out
         self.temp = x_in
         return x_out
@@ -163,6 +171,7 @@ class Sequential():
         count = len(self.layers)
         for i in range(0,count):
             grad_out = self.layers[count-i-1].backward(grad_in)
+            # print(i, grad_in, grad_out)
             grad_in = grad_out
 
     def param(self):
@@ -184,6 +193,53 @@ class Sequential():
             layer.grad_zero()
 
 
+
+class opt_adam():
+    """
+    Adam optimizer implementation
+    """
+
+    def __init__(self, model):
+        """
+
+        :param model: model whose parameters need to be optimized
+
+        """
+        self.beta_1 = 0.9   # Generally chosen value
+        self.beta_2 = 0.999 # Generally chosen value
+        self.step = 0.01    # Optimizer Parameter
+        self.epsilon = 10e-3    # Optimizer Parameter
+
+        self.m = []         # List of gradients first moment for each layer
+        self.v = []         # List of gradients second moment for each layer
+
+        self.paramlist, self.gradlist = model.param()       # get the list of parameters and its gradients from model
+        self.nb_layers = len(self.paramlist)                # number of layers
+        for layer_params in self.paramlist:
+            self.m.append(torch.zeros_like(layer_params))
+            self.v.append(torch.zeros_like(layer_params))
+
+        self.iter = 1           # Counter of iterations should start at 1 (with 0, denominator of m_hat will vanish)
+
+
+    def optimize_step(self, model):
+
+        paramlist, gradlist = model.param()
+        for i,(layer_params, layer_grads) in enumerate(zip(paramlist, gradlist)):
+        # for i in range(self.nb_layers):                 # Running loops  over layers
+            self.m[i] = self.beta_1* self.m[i] + (1 - self.beta_1) * layer_grads
+            self.v[i] = self.beta_2* self.v[i] + (1 - self.beta_2) * torch.pow(layer_grads, 2)
+
+            m_hat = self.m[i] / ( 1- self.beta_1**self.iter) + (1 - self.beta_1) * layer_grads/(1 - self.beta_1**self.iter)
+            v_hat = self.v[i] / (1 - self.beta_2**self.iter)
+            # if i == 1:
+            #     print(m_hat, self.m[i], layer_grads)
+            #     print(v_hat, self.v[i])
+
+            # Update step
+            layer_params -= self.step * m_hat/ (torch.sqrt(v_hat) + self.epsilon)
+
+        self.iter += 1          # increase the counter of iterations
 if __name__ == '__main__':
 
     torch.set_grad_enabled(False)
