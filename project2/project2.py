@@ -1,6 +1,5 @@
 import torch
 import math
-import dlc_practical_prologue as prologue
 
 class Linear():
 
@@ -25,11 +24,10 @@ class Linear():
         # Temporary variable to store module's previous input for use in backward pass
         self.temp = torch.zeros(dim_in)
 
-
     def forward(self, x_in):
 
         if x_in.dim() >1:
-            x_out =  torch.mm(self.w,x_in) + self.b         # To handle input of vector form
+            x_out =  torch.mm(x_in, self.w.t()) + self.b         # To handle input of vector form
         else:
             x_out =  torch.mv(self.w,x_in) + self.b         # To handle input of tensor form
         self.temp = x_in
@@ -48,13 +46,20 @@ class Linear():
 
         if x_in is None:            # If x_in is not provided, it's taken from the forward pass
             x_in = self.temp
+        if x_in.dim() == 1:
+            self.dw += torch.ger(gradwrtoutput, x_in.t())       # Accumulate gradient wrt parameters
+            self.db += gradwrtoutput
+            dldx_in = torch.mv(self.w.t(), gradwrtoutput)  # Gradient of loss wrt the module's input
 
-        self.dw += torch.ger(gradwrtoutput, x_in.t())       # Accumulate gradient wrt parameters
-        self.db += gradwrtoutput
+        else:                       # Same thing but for multiple training samples
+            for id in range(x_in.shape[0]):
+                self.dw += torch.ger(gradwrtoutput[id], x_in[id].t())  # Accumulate gradient wrt parameters
+                self.db += gradwrtoutput[id]
+            self.dw /= x_in.shape[0]
+            self.db /= x_in.shape[0]
+            dldx_in = torch.mv(self.w.t(), gradwrtoutput.mean(0))  # Gradient of loss wrt the module's input
 
-        dldx_in = torch.mv(self.w.t(), gradwrtoutput)   # Gradient of loss wrt the module's input
         return dldx_in
-
 
     def param(self):
         paramlist = [self.w] + [self.b]
@@ -66,6 +71,7 @@ class Linear():
         self.db = torch.zeros_like(self.b)
 
     __call__ = forward
+
 
 class relu():
 
@@ -108,7 +114,43 @@ class relu():
     __call__ = forward
 
 
+class Tanh():
 
+    def __init__(self):
+        self.temp = []        # Temporary variable to store module's previous input for use in backward pass
+
+
+    def forward(self, x_in):
+
+        self.temp = x_in
+        return (torch.exp(x_in) - torch.exp(-x_in)) / (torch.exp(x_in) + torch.exp(-x_in))
+
+    def gradient(self, x_in):
+
+        return 1 - torch.pow(self.forward(x_in), 2)
+
+    def backward(self, gradwrtoutput, x_in = None):
+        """
+        :param gradwrtoutput: Gradient of loss wrt module's output
+        :param x_in: Module's input
+        :return: Gradient of loss wrt module's input
+        """
+
+        if x_in == None:            # If x_in is not provided, it's taken from the forward pass
+            x_in = self.temp
+
+        dldx_in = torch.mul(gradwrtoutput, self.gradient(x_in))     #Compute gradient wrt input of module
+        return dldx_in
+
+    def param(self):
+
+        return []
+
+    def grad_zero(self):
+        pass
+
+
+    __call__ = forward
 
 
 
@@ -129,8 +171,6 @@ class loss_MSE():
         return []
 
     __call__ = forward
-
-
 
 
 class Sequential():
@@ -193,7 +233,6 @@ class Sequential():
             layer.grad_zero()
 
 
-
 class opt_adam():
     """
     Adam optimizer implementation
@@ -240,6 +279,34 @@ class opt_adam():
             layer_params -= self.step * m_hat/ (torch.sqrt(v_hat) + self.epsilon)
 
         self.iter += 1          # increase the counter of iterations
+
+
+class sgd():            #Stochastic Gradient Descent
+    pass
+
+
+def generate_data(n_sample):
+
+    dist = 1/ math.sqrt(2 * math.pi)
+
+    train_input = torch.empty(n_sample, 2).uniform_(0, 1)
+    test_input = torch.empty(n_sample, 2).uniform_(0, 1)
+    train_target = torch.zeros(n_sample, 2)
+    test_target = torch.zeros(n_sample,2)
+
+    temp = (train_input - 0.5).norm(p=2, dim=1)
+
+    train_target[temp > dist,0] = 1
+    train_target[temp <= dist, 1] = 1
+    # train_target = 1 - train_target
+
+    temp = (test_input - 0.5).norm(p=2, dim=1)
+    test_target[temp > dist, 0] = 1
+    test_target[temp <= dist, 1] = 1
+    # test_target = 1 - test_target
+
+    return train_input, test_input, train_target, test_target
+
 if __name__ == '__main__':
 
     torch.set_grad_enabled(False)
