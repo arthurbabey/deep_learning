@@ -68,6 +68,6 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
             best_epoch = i+1
         test_accuracy.append(accuracy)
 
-        print('Epochs:', i, 'accuracy', accuracy)
+        #print('Epochs:', i, 'accuracy', accuracy)
 
     return train_loss, test_loss, test_accuracy, test_accuracy[-1]
