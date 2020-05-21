@@ -24,7 +24,7 @@ def run(cuda = False):
     """
     Run the training
     """
-    
+
     train_input, train_target, train_classes, test_input, test_target, test_classes = prolog.generate_pair_sets(1000)
 
     siamese = Siamese(nn.Sequential(nn.Linear(10, 512), nn.ReLU(), nn.Linear(512, 512),\
@@ -46,18 +46,16 @@ def run(cuda = False):
 
     print('Accuracy of our best Siamese Network model: ', best_accuracy)
 
+
 """
 def parse_args():
-    """
-    Parse command line flags.
-    """
+
     parser = argparse.ArgumentParser()
     parser.add_argument('-cuda', action='store_true', default=False, dest='cuda', help='Use GPU')
 
     results = parser.parse_args()
 
     return {'cuda': results.cuda}
-
 """
 
 if __name__ == '__main__':
