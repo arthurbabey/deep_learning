@@ -46,7 +46,7 @@ def run(cuda = False):
 
     print('Accuracy of our best Siamese Network model: ', best_accuracy)
 
-
+"""
 def parse_args():
     """
     Parse command line flags.
@@ -58,9 +58,9 @@ def parse_args():
 
     return {'cuda': results.cuda}
 
-
+"""
 
 if __name__ == '__main__':
 
-    args = parse_args()
-    run(args['cuda'])
+    #args = parse_args()
+    run()
