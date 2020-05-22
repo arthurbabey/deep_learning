@@ -38,13 +38,13 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
 
     for i in range(epochs):
         for b in range(0, train_input.size(0), batch_size):
-          "We first predict the digit of each images"
+            "We first predict the digit of each images"
             output1 = siamese.forward1(train_input.narrow(0, b, batch_size)[:,0,:,:].unsqueeze(dim=1))
             output2 = siamese.forward1(train_input.narrow(0, b, batch_size)[:,1,:,:].unsqueeze(dim=1))
             criterion = torch.nn.CrossEntropyLoss()
             loss1 = criterion(output1, train_classes.narrow(0, b, batch_size)[:,0])
             loss2 = criterion(output2, train_classes.narrow(0, b, batch_size)[:,1])
-           "And then we predict the target"
+            "And then we predict the target"
             output3 = siamese.forward2(output1, output2)
             loss3 = criterion(output3, train_target.narrow(0, b, batch_size))
             loss = alpha*(loss1 + loss2) + (1 - alpha)*loss3
