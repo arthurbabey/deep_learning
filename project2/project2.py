@@ -1,21 +1,36 @@
-import torch
-import math
+# Project submission:
+# Saurav Aryan
+# Arthur Babey
+# Stanislas Ducotterd
 
+import torch
+import math # This library is only used once for the constant PI
+
+# Class containing linear module
 class Linear():
 
-    def __init__(self, dim_in, dim_out):
+    def __init__(self, dim_in, dim_out, initialize_He = True):
+        """
 
+        :param dim_in: Dimension of input to the layer
+        :param dim_out: Dimension of the output from the layer
+        :param initialize_He: Whether to initialize the parameters using He technique
+        """
         # constant used for initializing weights
         # torch.manual_seed(54)
         eps = 1e-2
 
         # weights for the layer
-        # self.w = torch.empty(dim_out, dim_in).normal_(0, eps)   # Simple weight initialization from normal distribution
-        self.w = torch.randn(dim_out, dim_in) * math.sqrt(2/dim_in)     # He initialization technique
+        if initialize_He is True:
+            self.w = torch.randn(dim_out, dim_in) * math.sqrt(2 / dim_in)  # He initialization technique
+        else:
+            self.w = torch.empty(dim_out, dim_in).normal_(0, eps)   # Simple weight initialization from normal distribution
         # bias for the layer
         # self.b = torch.empty(dim_out).normal_(0, eps)
-        self.b = torch.randn(dim_out) * math.sqrt(2/dim_in)  # He initialization technique
-
+        if initialize_He is True:
+            self.b = torch.randn(dim_out) * math.sqrt(2/dim_in)  # He initialization technique
+        else:
+            self.b = torch.empty(dim_out).normal_(0, eps)
         # Corresponding gradients
 
         self.dw = torch.zeros_like(self.w)
@@ -25,11 +40,16 @@ class Linear():
         self.temp = torch.zeros(dim_in)
 
     def forward(self, x_in):
+        """
+        Function to give the output of the layer
+        :param x_in: input sample, could be batch input as well for batch optimization
+        :return: x_out: output of the layer
+        """
 
         if x_in.dim() >1:
             x_out =  torch.mm(x_in, self.w.t()) + self.b         # To handle input of vector form
         else:
-            x_out =  torch.mv(self.w,x_in) + self.b         # To handle input of tensor form
+            x_out =  torch.mv(self.w,x_in) + self.b         # To handle input of tensor form (batch of samples)
         self.temp = x_in
         return x_out
 
@@ -40,13 +60,13 @@ class Linear():
     def backward(self, gradwrtoutput, x_in = None):
         """
         :param gradwrtoutput: Gradient of loss wrt module's output
-        :param x_in: Module's input
+        :param x_in: Module's input, if not provided, taken from value stored in temp variable during forward pass
         :return: Gradient of loss wrt module's input
         """
 
-        if x_in is None:            # If x_in is not provided, it's taken from the forward pass
+        if x_in is None:            # If x_in is not provided, it's taken from the forward pass (as in test.py)
             x_in = self.temp
-        if x_in.dim() == 1:
+        if x_in.dim() == 1:         # Checking if the sample is individual or in batch
             self.dw += torch.ger(gradwrtoutput, x_in.t())       # Accumulate gradient wrt parameters
             self.db += gradwrtoutput
             dldx_in = torch.mv(self.w.t(), gradwrtoutput)  # Gradient of loss wrt the module's input
@@ -62,17 +82,26 @@ class Linear():
         return dldx_in
 
     def param(self):
+        """
+
+        :return: paramlist: list of parameters of the module (w,b)
+                gradlist: list of gradients corresponding to the parameters (dw, db)
+        """
         paramlist = [self.w] + [self.b]
         gradlist = [self.dw] + [self.db]
         return paramlist, gradlist
 
     def grad_zero(self):
+        """
+        Function to set the gradients of parameters (dw, db) to zero. Called at the beginning of each epoch
+        :return:
+        """
         self.dw = torch.zeros_like(self.w)
         self.db = torch.zeros_like(self.b)
 
-    __call__ = forward
+    __call__ = forward      # Makes the class object callable with forward method as call function.
 
-
+# Class containing ReLU module
 class relu():
 
     def __init__(self):
@@ -80,13 +109,20 @@ class relu():
 
 
     def forward(self, x_in):
+        """
 
-        self.temp = x_in
-        # print("RELU forward, x_in ", self.temp)
+        :param x_in: input to the module
+        :return: output of the module
+        """
+        self.temp = x_in      # Temporary variable to store module's previous input for use in backward pass
         return torch.where(x_in> 0, x_in, torch.zeros_like(x_in))
 
     def gradient(self, x_in):
-
+        """
+        Function to return the gradient of the module's output wrt to the module's input
+        :param x_in: input
+        :return: gradient of output wrt input
+        """
         return torch.where(x_in> 0, torch.ones_like(x_in), torch.zeros_like(x_in))
 
     def backward(self, gradwrtoutput, x_in = None):
@@ -104,16 +140,23 @@ class relu():
         return dldx_in
 
     def param(self):
-
+        """
+        Module does not have any parameter so returns empty list
+        :return:
+        """
         return []
 
     def grad_zero(self):
+        """
+        Module does not have any parameters so does nothing
+        :return:
+        """
         pass
 
 
     __call__ = forward
 
-
+# Class containing Tanh module
 class Tanh():
 
     def __init__(self):
@@ -121,11 +164,21 @@ class Tanh():
 
 
     def forward(self, x_in):
+        """
 
-        self.temp = x_in
+        :param x_in: input to the module
+        :return: output of the module
+        """
+
+        self.temp = x_in      # Temporary variable to store module's previous input for use in backward pass
         return (torch.exp(x_in) - torch.exp(-x_in)) / (torch.exp(x_in) + torch.exp(-x_in))
 
     def gradient(self, x_in):
+        """
+        Function to return the gradient of the module's output wrt to the module's input
+        :param x_in: input
+        :return: gradient of output wrt input
+        """
 
         return 1 - torch.pow(self.forward(x_in), 2)
 
@@ -143,39 +196,32 @@ class Tanh():
         return dldx_in
 
     def param(self):
+        """
+        Module does not have any parameter so returns empty list
+        :return:
+        """
 
         return []
 
     def grad_zero(self):
+        """
+        Module does not have any parameters so does nothing
+        :return:
+        """
         pass
 
 
     __call__ = forward
 
-
-
-class loss_MSE():
-    def __init__(self):
-        pass
-
-    def forward(self, x_out, x_target):
-
-        return torch.sum(torch.pow(x_out-x_target,2))
-
-    def backward(self, x_out, x_target):
-
-        return 2*(x_out - x_target)
-
-    def param(self):
-
-        return []
-
-    __call__ = forward
-
-
+# Class containing Sequential module
 class Sequential():
 
     def __init__(self, *modules):
+        """
+
+        :param modules: list of layers and activation functions in order
+
+        """
         self.layers = modules
         self.temp = []        # Temporary variable to store module's previous input for use in backward pass
 
@@ -189,33 +235,35 @@ class Sequential():
         """
         # x_out = torch.zeros_like(x_in)
 
-        for layer in self.layers:           #Call forward function of each layer
+        for layer in self.layers:           #Call forward function of each layer in order
             x_out = layer.forward(x_in)
             # print("Forward pass Seq: ", layer, x_in, x_out)
-            x_in = x_out
+            x_in = x_out                    # output of the layer is passed as input to the next layer
         self.temp = x_in
         return x_out
 
-    __call__ = forward
+    __call__ = forward          # Designating forward function as call function to make the class object callable
 
     def backward(self, gradwrtoutput, x_in = None):
         """
         :param gradwrtoutput: Gradient of loss wrt module's output
-        :param x_in: Module's input
+        :param x_in: Module's input, usually not required and taken from temp variiable
         :return: Gradient of loss wrt module's input
         """
 
         if x_in is None:            # If x_in is not provided, it's taken from the forward pass
             x_in = self.temp
-        grad_in = gradwrtoutput
-        count = len(self.layers)
-        for i in range(0,count):
-            grad_out = self.layers[count-i-1].backward(grad_in)
-            # print(i, grad_in, grad_out)
-            grad_in = grad_out
+        grad_in = gradwrtoutput     # Input here is usually the gradient from loss function for backpropagation
+        count = len(self.layers)    # Number of layers in the module
+        for i in range(0,count):    # Calling backward pass of layers in reverse order
+            grad_out = self.layers[count-i-1].backward(grad_in) #count -i-1 to start from the outermost layer towards first layer
+            grad_in = grad_out      # Pass the gradient from the current layer as input to the previous layer
 
     def param(self):
-
+        """
+        returns the list of parameters and gradients of each layer
+        :return: gradlist, paramlist
+        """
         paramlist = []
         gradlist = []
 
@@ -229,13 +277,51 @@ class Sequential():
         return paramlist, gradlist
 
     def grad_zero(self):
+        """
+        Sets the gradient of parameters of each layer zero by calling grad_zero method of each layer
+        :return:
+        """
         for layer in self.layers:
             layer.grad_zero()
 
+# Class containing loss function Mean Squared Error
+class loss_MSE():
+    def __init__(self):
+        """
+        This module does not have any parameters nor needs any temporary variable to store data
+        """
+        pass
 
+    def forward(self, x_out, x_target):
+        """
+
+        :param x_out: Output from the model
+        :param x_target: Target (test_target/train_target) corresponding to the sample
+        :return: Mean Squared Error between the two
+        """
+        return torch.sum(torch.pow(x_out-x_target,2))
+
+    def backward(self, x_out, x_target):
+        """
+        returns the gradient of loss function wrt predicted output of the model
+        :param x_out: output of the model
+        :param x_target: target of the corresponding sample
+        :return: gradient of loss function
+        """
+        return 2*(x_out - x_target)
+
+    def param(self):
+
+        return []
+
+    __call__ = forward
+
+# Class for ADAM optimizer
 class opt_adam():
     """
     Adam optimizer implementation
+    Usage: opt_adam(model) inside the loop running epochs after backward pass
+
     """
 
     def __init__(self, model):
@@ -262,6 +348,11 @@ class opt_adam():
 
 
     def optimize_step(self, model):
+        """
+
+        :param model: model whose parameters need to be optimized
+
+        """
 
         paramlist, gradlist = model.param()
         for i,(layer_params, layer_grads) in enumerate(zip(paramlist, gradlist)):
@@ -280,12 +371,13 @@ class opt_adam():
 
         self.iter += 1          # increase the counter of iterations
 
-
-class sgd():            #Stochastic Gradient Descent
-    pass
-
-
+# Function to generate dataset described in the problem statement
 def generate_data(n_sample):
+    """
+
+    :param n_sample: Number of training and testing samples required
+    :return: train_input, test_input, train_target, test_target
+    """
 
     dist = 1/ math.sqrt(2 * math.pi)
 
@@ -307,64 +399,7 @@ def generate_data(n_sample):
 
     return train_input, test_input, train_target, test_target
 
-if __name__ == '__main__':
 
-    torch.set_grad_enabled(False)
-    train_input, train_target, test_input, test_target = prologue.load_data(one_hot_labels=True, normalize=True)
-
-    zeta = 0.90
-    train_target = train_target * zeta
-    test_target = test_target * zeta
-
-    nb_train_samples = train_input.shape[0]
-    nb_test_samples = test_input.shape[0]
-
-    dim_in = train_input.shape[1]
-    dim_out = train_target.shape[1]
-    dim_hidden = 25
-
-    lr = 0.01/nb_train_samples
-    L1 = Linear(dim_in,dim_hidden)
-    R1 = relu()
-    L2 = Linear(dim_hidden,dim_out)
-    R2 = relu()
-    # L3 = Linear(dim_hidden,dim_out)
-    # R3 = relu()
-    loss_criterion = loss_MSE()
-
-    model = Sequential(L1,R1, L2, R2)
-
-
-    for e in range(0,1000):
-        model.grad_zero()
-        sum_loss = 0
-        nb_train_errors = 0
-        nb_test_errors = 0
-        for idx in range(nb_train_samples):
-            model_out = model(train_input[idx])
-            if train_target[idx, model_out.argmax()] <0.5 :  # Checking if prediction is correct
-                nb_train_errors += 1
-
-            loss = loss_criterion(model_out, train_target[idx])
-            loss_grad = loss_criterion.backward(model_out, train_target[idx])
-            model.backward(loss_grad)                         # Backward step
-
-            sum_loss = sum_loss + loss
-        # Gradient Step
-        paramlist, gradlist = model.param()
-        for i, (param, param_grad) in enumerate(zip(paramlist, gradlist)):
-            # print(param.max()/param_grad.max())
-            param -= lr*param_grad
-
-        for idx in range(nb_test_samples):
-            model_out = model(test_input[idx])
-            if test_target[idx, model_out.argmax()] < 0.5 :
-                nb_test_errors += 1
-
-        train_error = nb_train_errors/nb_train_samples * 100
-        test_error = nb_test_errors/nb_test_samples * 100
-
-        print("{:d} Loss= {:.02f}  Train error = {:.02f}%, Test error = {:.02f}%" .format(e, sum_loss,train_error, test_error))
 
 
 
