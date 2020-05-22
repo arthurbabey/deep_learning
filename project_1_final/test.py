@@ -1,6 +1,6 @@
 
 """
-Run and train the best model, output best accuracy.
+Run and train the best model, output testing accuracy at the best epoch.
 """
 
 import torch
@@ -34,7 +34,7 @@ def run():
     train_loss, test_loss, test_accuracy, best_accuracy = training(siamese, train_input, train_target, \
     train_classes, test_input, test_target, test_classes, epochs=EPOCHS, batch_size = BATCH_SIZE, lr = LR, alpha=ALPHA)
 
-    print('Accuracy of our best Siamese Network model: ', best_accuracy)
+    print('Accuracy of our Siamese Network model: ', best_accuracy)
 
 
 
