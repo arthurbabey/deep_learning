@@ -11,7 +11,7 @@ import src.dlc_practical_prologue as prolog
 
 from torch import nn
 from torch.nn import functional as F
-from src.model import bigConvNet_3, Siamese
+from src.model import Siamese
 from src.helpers import training, nb_errors
 
 
