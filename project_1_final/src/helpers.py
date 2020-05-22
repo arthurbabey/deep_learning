@@ -17,7 +17,9 @@ from torch import nn
 
 def training(siamese, train_input, train_target, train_classes, test_input, test_target,\
                        test_classes, epochs=10 , batch_size=100, lr=0.08, alpha=0.5):
-
+    """
+    Function to train the whole siamese network
+    """
 
     torch.nn.init.xavier_uniform_(siamese.model.conv1.weight)
     torch.nn.init.xavier_uniform_(siamese.model.conv2.weight)
@@ -36,11 +38,13 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
 
     for i in range(epochs):
         for b in range(0, train_input.size(0), batch_size):
+          "We first predict the digit of each images"
             output1 = siamese.forward1(train_input.narrow(0, b, batch_size)[:,0,:,:].unsqueeze(dim=1))
             output2 = siamese.forward1(train_input.narrow(0, b, batch_size)[:,1,:,:].unsqueeze(dim=1))
             criterion = torch.nn.CrossEntropyLoss()
             loss1 = criterion(output1, train_classes.narrow(0, b, batch_size)[:,0])
             loss2 = criterion(output2, train_classes.narrow(0, b, batch_size)[:,1])
+           "And then we predict the target"
             output3 = siamese.forward2(output1, output2)
             loss3 = criterion(output3, train_target.narrow(0, b, batch_size))
             loss = alpha*(loss1 + loss2) + (1 - alpha)*loss3
@@ -71,8 +75,6 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
             best_epoch = i+1
         test_accuracy.append(accuracy)
 
-        #print('Epochs:', i, 'accuracy', accuracy)
-
     return train_loss, test_loss, test_accuracy, best_accuracy
 
 
@@ -80,7 +82,7 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
 
 def nb_errors(pred, truth):
     """
-    Errors computation for 2 dimensional output training
+    Compute the number of errors
     """
 
     pred_class = pred.argmax(1)
