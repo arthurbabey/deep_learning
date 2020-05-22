@@ -15,7 +15,7 @@ from src.model import bigConvNet_3, Siamese
 from src.helpers import training, nb_errors
 
 
-EPOCHS = 200
+EPOCHS = 100
 LR = 0.1
 BATCH_SIZE = 100
 ALPHA = 0.9
