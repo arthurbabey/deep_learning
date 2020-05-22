@@ -34,7 +34,8 @@ def run():
     test_target = test_target
 
     model = predictive_model(500, 0.5, 0.5) #initialize the predictive model
-    comparison = nn.Sequential(nn.Linear(10, 1500), nn.ReLU(),nn.Linear(1500, 2))#initialize the comparison model
+    comparison = nn.Sequential(nn.Linear(intermediate_dim, 128), nn.ReLU(), nn.Linear(128, 128), nn.ReLU(),\
+                               nn.Linear(128, output_dim))#initialize the comparison model
     comparisons = [comparison]
     print('Models are initialized !')
 
