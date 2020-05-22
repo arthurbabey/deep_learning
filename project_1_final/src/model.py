@@ -33,7 +33,7 @@ class predictive_model(nn.Module):
 
 class Siamese(nn.Module):
     """
-    Siamese model, initializee a predictive model a need to be inialized with a comparison model
+    Siamese model, uses the best predictive model by default, need to be inialized with a comparison model
     """
 
     def __init__(self, comparison):
