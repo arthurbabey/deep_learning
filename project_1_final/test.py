@@ -11,7 +11,7 @@ import src.dlc_practical_prologue as prolog
 
 from torch import nn
 from torch.nn import functional as F
-from src.model import predictive_model, Siamese
+from src.model import predictive_model
 from src.helpers import training, nb_errors
 
 
