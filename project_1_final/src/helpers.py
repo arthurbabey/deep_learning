@@ -73,7 +73,7 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
 
         #print('Epochs:', i, 'accuracy', accuracy)
 
-    return train_loss, test_loss, test_accuracy, test_accuracy[-1]
+    return train_loss, test_loss, test_accuracy, best_accuracy
 
 
 
