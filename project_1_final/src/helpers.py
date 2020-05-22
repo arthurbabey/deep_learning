@@ -15,13 +15,6 @@ from torch.nn import functional as F
 from torch.optim.lr_scheduler import StepLR
 from torch import nn
 
-
-def nb_errors(pred, truth):
-
-    pred_class = pred.argmax(1)
-    return (pred_class - truth != 0).sum().item()
-
-
 def training(siamese, train_input, train_target, train_classes, test_input, test_target,\
                        test_classes, epochs=10 , batch_size=100, lr=0.08, alpha=0.5):
 
@@ -85,52 +78,6 @@ def training(siamese, train_input, train_target, train_classes, test_input, test
 
 
 
-def train_model(model, train_input, train_target, test_input, test_target,  epochs=500, batch_size=100, lr=0.1):
-    """
-    Training function for a training with 2 dimensional outputs.
-    Model is assumed to be a ConvNet with 2 conv layers
-    """
-
-    torch.nn.init.xavier_uniform_(model.conv1.weight)
-    torch.nn.init.xavier_uniform_(model.conv2.weight)
-
-    optimizer = torch.optim.Adam(model.parameters())
-    #scheduler = StepLR(optimizer, step_size=100, gamma=0.1)
-    train_loss = []
-    test_loss = []
-    test_accuracy = []
-    best_accuracy = 0
-    best_epoch = 0
-
-    for i in range(epochs):
-        model.train()
-
-        for b in range(0, train_input.size(0), batch_size):
-            output = model(train_input.narrow(0, b, batch_size))
-            criterion = torch.nn.CrossEntropyLoss()
-            loss = criterion(output, train_target.narrow(0, b, batch_size))
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-            #scheduler.step()
-
-        output_train = model(train_input)
-        model.eval()
-        output_test = model(test_input)
-        train_loss.append(criterion(output_train, train_target).item())
-        test_loss.append(criterion(output_test, test_target).item())
-        accuracy = 1 - nb_errors(output_test, test_target) / 1000
-
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_epoch = i+1
-        test_accuracy.append(accuracy)
-
-        #if i%100 == 0:
-        #    print('Epoch : ',i+1, '\t', 'test loss :', test_loss[-1], '\t', 'train loss', train_loss[-1])
-
-    return train_loss, test_loss, test_accuracy, best_accuracy
-
 def nb_errors(pred, truth):
     """
     Errors computation for 2 dimensional output training
@@ -140,54 +87,3 @@ def nb_errors(pred, truth):
     return (pred_class - truth != 0).sum().item()
 
 
-def nb_errors_10(pred, truth):
-    """
-    Errors computation for 10 dimensional output training
-    """
-
-    pred_class = pred.view(-1, 2, 10).argmax(2).argmax(1)
-    return (pred_class - truth != 0).sum().item()
-
-
-def train_model_10(model, train_input, train_classes, test_input, test_target, test_classes,\
-                epochs=250, batch_size=100, lr=0.1):
-    """
-    Training function for 10 dimensional output.
-    Model is assumed to be a convolutional network with 2 conv layers
-    """
-
-    torch.nn.init.xavier_uniform_(model.conv1.weight)
-    torch.nn.init.xavier_uniform_(model.conv2.weight)
-
-    optimizer = torch.optim.Adam(model.parameters())
-    train_loss = []
-    test_loss = []
-    test_accuracy = []
-    best_accuracy = 0
-    best_epoch = 0
-
-    for i in range(epochs):
-        for b in range(0, train_input.size(0), batch_size):
-            output = model(train_input.narrow(0, b, batch_size))
-            criterion = torch.nn.CrossEntropyLoss()
-            labels = train_classes.narrow(0, b, batch_size)
-            loss = criterion(output, labels)
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
-
-        output_train = model(train_input)
-        output_test = model(test_input)
-        train_loss.append(criterion(output_train, train_classes).item())
-        test_loss.append(criterion(output_test, test_classes).item())
-        accuracy = 1 - nb_errors_10(output_test, test_target) / 1000
-
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_epoch = i+1
-        test_accuracy.append(accuracy)
-
-        #if i%100 == 0:
-            #print('Epoch : ',i+1, '\t', 'test loss :', test_loss[-1], '\t', 'train loss', train_loss[-1])
-
-    return train_loss, test_loss, test_accuracy, best_accuracy, best_epoch
