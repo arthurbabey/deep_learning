@@ -27,8 +27,6 @@ def run():
 
     train_input, train_target, train_classes, test_input, test_target, test_classes = prolog.generate_pair_sets(1000)
 
-    siamese = Siamese(nn.Sequential(nn.Linear(10, 512), nn.ReLU(), nn.Linear(512, 512),\
-    nn.ReLU(), nn.Linear(512, 2)))
 
     siamese = Siamese(nn.Sequential(nn.Linear(10, 1500), nn.ReLU(), nn.Linear(1500, 2)))
 
