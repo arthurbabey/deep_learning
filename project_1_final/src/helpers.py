@@ -8,85 +8,23 @@ from torch import nn
 
 
 
-def training(model, comparisons, train_input, train_target, train_classes, test_input, test_target,\
-                       test_classes, epochs=50, batch_size=100, lr=0.1):
-    """
-    Function to train a double model.
+import torch
+import torch.optim as optim
 
-    Model have to be a ConvNet with 2 layers
-    Comparisons have to be a list of comparison model (10 dim input, 2 dim output)
-    """
-
-    torch.nn.init.xavier_uniform_(model.conv1.weight)
-    torch.nn.init.xavier_uniform_(model.conv2.weight)
-    torch.nn.init.xavier_uniform_(model.fc1.weight)
-    torch.nn.init.xavier_uniform_(model.fc2.weight)
-
-    for comparison in comparisons:
-        for i in range(0, len(comparison), 2):
-            torch.nn.init.xavier_uniform_(comparison[i].weight)
-
-    optimizer_model = torch.optim.Adam(model.parameters())
-    optimizer_comparisons = []
-    for comparison in comparisons:
-        optimizer_comparisons.append(torch.optim.Adam(comparison.parameters()))
-
-    train_loss = torch.empty(70, len(comparisons), dtype=torch.float)
-    test_loss = torch.empty(70, len(comparisons), dtype=torch.float)
-    test_accuracy = torch.empty(70, len(comparisons), dtype=torch.float)
-    best_accuracy = torch.empty(1, len(comparisons), dtype=torch.float)
-    best_epoch = torch.empty(1, len(comparisons), dtype=torch.float)
-
-    for i in range(100):
-        for b in range(0, train_input.size(0), batch_size):
-            output = model(train_input.narrow(0, b, batch_size))
-            criterion = torch.nn.CrossEntropyLoss()
-            loss1 = criterion(output, train_classes.narrow(0, b, batch_size))
-            optimizer_model.zero_grad()
-            loss1.backward(retain_graph=True)
-            optimizer_model.step()
-
-        mid_train = model(train_input).detach()
-        mid_test = model(test_input).detach()
-        mid_train_ = torch.zeros(int(mid_train.size(0) / 2), 10)
-        mid_test_ = torch.zeros(int(mid_test.size(0) / 2), 10)
-
-        for j in range(int(mid_train.size(0) / 2)):
-                mid_train_[j,:] = mid_train[2*j,:] - mid_train[2*j + 1,:]
-                mid_test_[j,:] = mid_test[2*j,:] - mid_test[2*j + 1,:]
-
-        if i >= 30:
-            for j in range(len(comparisons)):
-                for k in range(epochs):
-                    for b in range(0, mid_train_.size(0), batch_size):
-                        output = comparisons[j](mid_train_.narrow(0, b, batch_size))
-                        loss2 = criterion(output, train_target.narrow(0, b, batch_size))
-                        optimizer_comparisons[j].zero_grad()
-                        loss2.backward()
-                        optimizer_comparisons[j].step()
-
-                    output_train = comparisons[j](mid_train_)
-                    output_test = comparisons[j](mid_test_)
-
-                    train_loss[i-30][j] = criterion(output_train, train_target).item()
-                    test_loss[i-30][j] = criterion(output_test, test_target).item()
-                    accuracy = 1 - nb_errors(output_test, test_target) / 1000
-
-                    if accuracy > best_accuracy[0][j]:
-                        best_accuracy[0][j] = accuracy
-                        best_epoch[0][j] = i+1
-            test_accuracy[i-30][j] = accuracy
-
-    return train_loss, test_loss, test_accuracy, best_accuracy, best_epoch
+from torch.nn import functional as F
+from torch.optim.lr_scheduler import StepLR
+from torch import nn
 
 
+def nb_errors(pred, truth):
 
-def train_siamese_model(siamese, train_input, train_target, train_classes, test_input, test_target,\
-                       test_classes, epochs=100 , batch_size=100, lr=0.08, alpha=0.5):
+    pred_class = pred.argmax(1)
+    return (pred_class - truth != 0).sum().item()
 
-    """
-    Traning function for a siamese model
-    """
+
+def training(siamese, train_input, train_target, train_classes, test_input, test_target,\
+                       test_classes, epochs=10 , batch_size=100, lr=0.08, alpha=0.5):
+
 
     torch.nn.init.xavier_uniform_(siamese.model.conv1.weight)
     torch.nn.init.xavier_uniform_(siamese.model.conv2.weight)
@@ -140,7 +78,10 @@ def train_siamese_model(siamese, train_input, train_target, train_classes, test_
             best_epoch = i+1
         test_accuracy.append(accuracy)
 
+        #print('Epochs:', i, 'accuracy', accuracy)
+
     return train_loss, test_loss, test_accuracy, test_accuracy[-1]
+
 
 
 
