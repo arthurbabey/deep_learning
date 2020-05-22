@@ -18,7 +18,7 @@ from src.helpers import training, nb_errors
 EPOCHS = 50
 LR = 0.1
 BATCH_SIZE = 100
-ALPHA = 0.5
+ALPHA = 0.9
 
 def run():
     """
